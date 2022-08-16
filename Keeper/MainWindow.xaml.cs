@@ -1,7 +1,4 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 
@@ -12,6 +9,8 @@ namespace Keeper
     /// </summary>
     public partial class MainWindow : Window
     {
+        static readonly GridLength Zero = new(0);
+        private static GridLength glMemory = new(0);
         public MainWindow()
         {
             InitializeComponent();
@@ -22,26 +21,18 @@ namespace Keeper
         private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
         {
             Loaded -= MainWindow_OnLoaded;
-            this.editorPanel.PreviewMouseWheel += EditorPanel_OnMouseWheel;
+            editorPanel.PreviewMouseWheel += EditorPanel_OnMouseWheel;
         }
         private void MainWindow_OnUnloaded(object sender, RoutedEventArgs e)
         {
             Unloaded -= MainWindow_OnUnloaded;
-
             // Detach mouse wheel CTRL-key zoom support
-            this.PreviewMouseWheel -= EditorPanel_OnMouseWheel;
-        }
-        private async void ButtonBase_OnClick(object sender, RoutedEventArgs e)
-        {
-            //string? text = await webView.ExecuteScriptAsync("function awesome(){return editor.getValue();}awesome();");
-            //MessageBox.Show(text);
+            PreviewMouseWheel -= EditorPanel_OnMouseWheel;
         }
 
         private void ExpandLeftPanelBtn_OnClick(object sender, RoutedEventArgs e)
         {
-            leftPanel.Visibility = Visibility.Visible;
-            leftGridSplitter.Visibility = Visibility.Visible;
-            expandLeftPanel.Visibility = Visibility.Collapsed;
+            ExpandLeftPanel();
         }
 
         private void CollapseLeftPanelBtn_OnClick(object sender, RoutedEventArgs e)
@@ -51,27 +42,20 @@ namespace Keeper
 
         private void EditorPanel_OnMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            Debug.WriteLine($"e.Delta -> {e.Delta}");
-
             if (Keyboard.Modifiers != ModifierKeys.Control) return;
             double fontSize = this.editorPanel.FontSize + e.Delta / 25.0;
-
-            this.editorPanel.FontSize = fontSize switch
+            editorPanel.FontSize = fontSize switch
             {
                 < 6 => 6,
                 > 200 => 200,
                 _ => fontSize
             };
-
             e.Handled = true;
-
         }
 
-        private void LeftPanel_OnSizeChanged(object sender, SizeChangedEventArgs e)
+        private void LeftGridSplitter_OnDragCompleted(object sender, DragCompletedEventArgs e)
         {
-            //Debug.WriteLine("Changed" + e.NewSize.Width);
-            //if (!(e.NewSize.Width < leftPanelMenuBar.MinWidth)) return;
-            //CollapseLeftPane();
+            if (leftPanel.RenderSize.Width < leftPanelMenuBar.MinWidth) CollapseLeftPane();
         }
 
         private void CollapseLeftPane()
@@ -79,13 +63,17 @@ namespace Keeper
             expandLeftPanel.Visibility = Visibility.Visible;
             leftPanel.Visibility = Visibility.Collapsed;
             leftGridSplitter.Visibility = Visibility.Collapsed;
+            glMemory = mainGrid.ColumnDefinitions[0].Width;
+            mainGrid.ColumnDefinitions[0].Width = Zero;
         }
 
-        private void LeftGridSplitter_OnDragCompleted(object sender, DragCompletedEventArgs e)
+        private void ExpandLeftPanel()
         {
-            leftPanel.ShowGridLines = true;
-            if(leftPanel.RenderSize.Width< leftPanelMenuBar.MinWidth)CollapseLeftPane();
+            leftPanel.Visibility = Visibility.Visible;
+            leftGridSplitter.Visibility = Visibility.Visible;
+            expandLeftPanel.Visibility = Visibility.Collapsed;
             leftPanel.RenderSize = new Size(200, leftPanel.Height);
+            mainGrid.ColumnDefinitions[0].Width = glMemory.Value < new GridLength(200).Value ? new GridLength(200) : glMemory;
         }
     }
 }
